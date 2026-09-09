@@ -1,0 +1,124 @@
+name: release
+
+# Cutting a release is pushing a tag:
+#
+#     git tag v1.0.0 && git push origin v1.0.0
+#
+# The binaries are then built from the tagged source on a clean runner rather than
+# from whatever happens to be on someone's machine, which is the whole point.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to build, without the leading v (e.g. 1.0.0)'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Work out the version
+        id: v
+        shell: bash
+        run: |
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            V="${{ github.event.inputs.version }}"
+          else
+            V="${GITHUB_REF_NAME#v}"
+          fi
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+          echo "Building $V"
+
+      # Never ship a build whose tests do not pass.
+      - name: Test
+        run: dotnet test SshDockerBackup.slnx --configuration Release
+
+      # The download for someone whose NAS is in trouble: needs nothing installed.
+      - name: Publish self-contained
+        run: >
+          dotnet publish src/SshDockerBackup.App/SshDockerBackup.App.csproj
+          -c Release -r win-x64 --self-contained true
+          -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:DebugType=none
+          -p:Version=${{ steps.v.outputs.version }}
+          -o publish/self-contained
+
+      # For anyone who already has the .NET Desktop Runtime and would rather not
+      # download 140 MB of it again.
+      - name: Publish framework-dependent
+        run: >
+          dotnet publish src/SshDockerBackup.App/SshDockerBackup.App.csproj
+          -c Release -r win-x64 --self-contained false
+          -p:PublishSingleFile=true
+          -p:DebugType=none
+          -p:Version=${{ steps.v.outputs.version }}
+          -o publish/framework-dependent
+
+      - name: Package
+        shell: pwsh
+        run: |
+          $v = "${{ steps.v.outputs.version }}"
+          New-Item -ItemType Directory dist | Out-Null
+
+          Compress-Archive -Path publish/self-contained/* -DestinationPath "dist/SshDockerBackup-$v-win-x64-self-contained.zip"
+          Compress-Archive -Path publish/framework-dependent/* -DestinationPath "dist/SshDockerBackup-$v-win-x64-framework-dependent.zip"
+
+          # Checksums matter more than usual here: the binaries are unsigned, so this
+          # is the only way a downloader can confirm they got what was published.
+          Get-ChildItem dist/*.zip | ForEach-Object {
+            $h = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower()
+            "$h  $($_.Name)" | Out-File -Append -Encoding ascii dist/SHA256SUMS.txt
+          }
+
+          Get-Content dist/SHA256SUMS.txt
+          Get-ChildItem dist | Select-Object Name, Length
+
+      - name: Create the release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          V="${{ steps.v.outputs.version }}"
+          cat > notes.md <<'EOF'
+          ### Download
+
+          | File | Size | Requires |
+          |---|---|---|
+          | `…-self-contained.zip` | ~140 MB | Nothing. Unzip and run. |
+          | `…-framework-dependent.zip` | ~8 MB | [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0) |
+
+          Take the self-contained one unless you already have the runtime.
+
+          ### Windows will warn you
+
+          The executable is not code-signed, so SmartScreen shows **"Windows protected your PC"**
+          on first run. Choose **More info → Run anyway**. If you would rather verify before
+          trusting it, compare the download against `SHA256SUMS.txt`:
+
+          ```powershell
+          Get-FileHash .\SshDockerBackup-*.zip -Algorithm SHA256
+          ```
+
+          ### Before you rely on it
+
+          Test a restore onto something you do not mind losing. This tool writes archives over live
+          paths and recreates containers, so a mistake costs data.
+          EOF
+
+          gh release create "v$V" dist/* \
+            --title "v$V" \
+            --notes-file notes.md \
+            --verify-tag

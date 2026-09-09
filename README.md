@@ -15,6 +15,29 @@ This backs up all three parts of a container — its **data**, its **configurati
 
 ![The Containers tab, listing every container with its mount data and size](docs/screenshots/02-containers.png)
 
+## Download
+
+Grab the latest build from the [Releases page](https://github.com/CarstenKnop/synology-docker-backup/releases).
+
+| File | Size | Requires |
+|---|---|---|
+| `…-self-contained.zip` | ~140 MB | Nothing. Unzip and run. |
+| `…-framework-dependent.zip` | ~8 MB | [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0) |
+
+Take the self-contained one unless you already have the runtime — if your NAS is in trouble, the
+last thing you want is a runtime installer standing between you and your data.
+
+**Windows will warn you.** The executable is not code-signed, so SmartScreen shows *"Windows
+protected your PC"* the first time you run it. Choose **More info → Run anyway**. Every release
+ships a `SHA256SUMS.txt` so you can verify the download instead of taking that on faith:
+
+```powershell
+Get-FileHash .\SshDockerBackup-1.0.0-win-x64-self-contained.zip -Algorithm SHA256
+```
+
+Nothing is installed and nothing runs in the background — it is one executable that reads its
+settings from `%APPDATA%` and writes logs to `%LOCALAPPDATA%`. Delete the exe to uninstall.
+
 ## Why this one
 
 **Nothing is installed on the host.** No agent, no exposed Docker socket, no `NOPASSWD` sudoers
@@ -285,6 +308,15 @@ dotnet test SshDockerBackup.slnx
 ```
 
 Requires the .NET 10 SDK. Open `SshDockerBackup.slnx` in Visual Studio 2026.
+
+To produce the same binaries the release workflow does:
+
+```
+dotnet publish src/SshDockerBackup.App -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
+```
+
+Releases are cut by pushing a tag — `git tag v1.0.0 && git push origin v1.0.0` — so the published
+binaries are built from the tagged source on a clean runner rather than from a developer's machine.
 
 ## Tests
 

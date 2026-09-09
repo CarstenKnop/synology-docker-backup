@@ -1,3 +1,4 @@
+﻿using System.Reflection;
 using System.IO;
 using System.Windows;
 using System.Windows.Threading;
@@ -38,7 +39,13 @@ public partial class App : Application
         MainWindow = window;
         window.Show();
 
-        Log.Information("SshDockerBackup started. Logs: {LogDirectory}", LogDirectory);
+        // Version first: "which build is this?" is the opening question on every bug report,
+        // and a published single-file binary carries no other clue.
+        var version = Assembly.GetExecutingAssembly()
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
+            ?? "unknown";
+
+        Log.Information("SshDockerBackup {Version} started. Logs: {LogDirectory}", version, LogDirectory);
     }
 
     private static void ConfigureLogging()

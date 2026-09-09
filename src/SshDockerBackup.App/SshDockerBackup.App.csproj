@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
@@ -8,7 +8,13 @@
     <UseWPF>true</UseWPF>
     <RootNamespace>SshDockerBackup.App</RootNamespace>
     <AssemblyName>SshDockerBackup</AssemblyName>
+    <!-- Overridden by the release workflow from the git tag: -p:Version=1.2.3 -->
     <Version>1.0.0</Version>
+    <Product>SSH Docker Backup</Product>
+    <Authors>Carsten Knop</Authors>
+    <Company>Carsten Knop</Company>
+    <Copyright>Copyright (c) 2026 Carsten Knop</Copyright>
+    <Description>Backs up and restores Docker containers over SSH. Built for Synology Container Manager.</Description>
     <ApplicationIcon></ApplicationIcon>
     <!-- Application.ThemeMode (the built-in Fluent/Windows 11 theme) is still marked experimental. -->
     <NoWarn>$(NoWarn);WPF0001</NoWarn>
