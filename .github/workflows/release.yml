@@ -1,4 +1,4 @@
-name: release
+﻿name: release
 
 # Cutting a release is pushing a tag:
 #
@@ -45,27 +45,17 @@ jobs:
       - name: Test
         run: dotnet test SshDockerBackup.slnx --configuration Release
 
-      # The download for someone whose NAS is in trouble: needs nothing installed.
-      - name: Publish self-contained
-        run: >
-          dotnet publish src/SshDockerBackup.App/SshDockerBackup.App.csproj
-          -c Release -r win-x64 --self-contained true
-          -p:PublishSingleFile=true
-          -p:IncludeNativeLibrariesForSelfExtract=true
-          -p:DebugType=none
-          -p:Version=${{ steps.v.outputs.version }}
-          -o publish/self-contained
-
-      # For anyone who already has the .NET Desktop Runtime and would rather not
-      # download 140 MB of it again.
-      - name: Publish framework-dependent
+      # Framework-dependent on purpose. A self-contained WPF build is ~140 MB because
+      # WPF cannot be trimmed, and shipping the runtime inside every release means
+      # shipping its security fixes too. Microsoft's installer keeps itself patched.
+      - name: Publish
         run: >
           dotnet publish src/SshDockerBackup.App/SshDockerBackup.App.csproj
           -c Release -r win-x64 --self-contained false
           -p:PublishSingleFile=true
           -p:DebugType=none
           -p:Version=${{ steps.v.outputs.version }}
-          -o publish/framework-dependent
+          -o publish/app
 
       - name: Package
         shell: pwsh
@@ -73,8 +63,7 @@ jobs:
           $v = "${{ steps.v.outputs.version }}"
           New-Item -ItemType Directory dist | Out-Null
 
-          Compress-Archive -Path publish/self-contained/* -DestinationPath "dist/SshDockerBackup-$v-win-x64-self-contained.zip"
-          Compress-Archive -Path publish/framework-dependent/* -DestinationPath "dist/SshDockerBackup-$v-win-x64-framework-dependent.zip"
+          Compress-Archive -Path publish/app/* -DestinationPath "dist/SshDockerBackup-$v-win-x64.zip"
 
           # Checksums matter more than usual here: the binaries are unsigned, so this
           # is the only way a downloader can confirm they got what was published.
@@ -93,14 +82,24 @@ jobs:
         run: |
           V="${{ steps.v.outputs.version }}"
           cat > notes.md <<'EOF'
-          ### Download
+          ### Install
 
-          | File | Size | Requires |
-          |---|---|---|
-          | `…-self-contained.zip` | ~140 MB | Nothing. Unzip and run. |
-          | `…-framework-dependent.zip` | ~8 MB | [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0) |
+          **1. Get the .NET 10 Desktop Runtime**, if you do not already have it — it is a small
+          Microsoft installer, and *Desktop* matters: the plain .NET Runtime does not include WPF.
 
-          Take the self-contained one unless you already have the runtime.
+          ```powershell
+          winget install Microsoft.DotNet.DesktopRuntime.10
+          ```
+
+          Or download it from
+          [dotnet.microsoft.com/download/dotnet/10.0](https://dotnet.microsoft.com/download/dotnet/10.0)
+          — pick **.NET Desktop Runtime**, **x64**.
+
+          **2. Unzip and run** `SshDockerBackup.exe`. Nothing is installed, nothing runs in the
+          background, and deleting the exe uninstalls it. Settings live in `%APPDATA%`, logs in
+          `%LOCALAPPDATA%`.
+
+          If the runtime is missing, Windows says so on launch and offers the download link.
 
           ### Windows will warn you
 
@@ -120,5 +119,4 @@ jobs:
 
           gh release create "v$V" dist/* \
             --title "v$V" \
-            --notes-file notes.md \
-            --verify-tag
+            --notes-file notes.md

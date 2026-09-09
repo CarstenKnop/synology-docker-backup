@@ -17,22 +17,28 @@ This backs up all three parts of a container — its **data**, its **configurati
 
 ## Download
 
-Grab the latest build from the [Releases page](https://github.com/CarstenKnop/synology-docker-backup/releases).
+Grab the latest zip from the
+[Releases page](https://github.com/CarstenKnop/synology-docker-backup/releases) — about 8 MB.
 
-| File | Size | Requires |
-|---|---|---|
-| `…-self-contained.zip` | ~140 MB | Nothing. Unzip and run. |
-| `…-framework-dependent.zip` | ~8 MB | [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0) |
+**1. Install the .NET 10 Desktop Runtime** if you do not already have it:
 
-Take the self-contained one unless you already have the runtime — if your NAS is in trouble, the
-last thing you want is a runtime installer standing between you and your data.
+```powershell
+winget install Microsoft.DotNet.DesktopRuntime.10
+```
+
+Or get it from [dotnet.microsoft.com/download/dotnet/10.0](https://dotnet.microsoft.com/download/dotnet/10.0)
+— choose **.NET Desktop Runtime**, **x64**. *Desktop* is the word that matters: the plain .NET
+Runtime does not include WPF, and the app will not start with it. If the runtime is missing,
+Windows tells you so on launch and offers the link.
+
+**2. Unzip and run** `SshDockerBackup.exe`. That is the whole install.
 
 **Windows will warn you.** The executable is not code-signed, so SmartScreen shows *"Windows
 protected your PC"* the first time you run it. Choose **More info → Run anyway**. Every release
 ships a `SHA256SUMS.txt` so you can verify the download instead of taking that on faith:
 
 ```powershell
-Get-FileHash .\SshDockerBackup-1.0.0-win-x64-self-contained.zip -Algorithm SHA256
+Get-FileHash .\SshDockerBackup-1.0.0-win-x64.zip -Algorithm SHA256
 ```
 
 Nothing is installed and nothing runs in the background — it is one executable that reads its
@@ -312,7 +318,7 @@ Requires the .NET 10 SDK. Open `SshDockerBackup.slnx` in Visual Studio 2026.
 To produce the same binaries the release workflow does:
 
 ```
-dotnet publish src/SshDockerBackup.App -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
+dotnet publish src/SshDockerBackup.App -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true
 ```
 
 Releases are cut by pushing a tag — `git tag v1.0.0 && git push origin v1.0.0` — so the published
