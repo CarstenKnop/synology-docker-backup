@@ -18,7 +18,7 @@ This backs up all three parts of a container — its **data**, its **configurati
 ## Download
 
 Grab the latest zip from the
-[Releases page](https://github.com/CarstenKnop/synology-docker-backup/releases) — about 8 MB.
+[Releases page](https://github.com/CarstenKnop/synology-docker-backup/releases) — 3.8 MB.
 
 **1. Install the .NET 10 Desktop Runtime** if you do not already have it:
 
