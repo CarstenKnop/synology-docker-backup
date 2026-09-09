@@ -230,3 +230,11 @@ dotnet build SshDockerBackup.slnx
 ```
 
 Requires the .NET 10 SDK. Open `SshDockerBackup.slnx` in Visual Studio 2026.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
+
+Worth reading the warranty disclaimer rather than skipping it. This tool writes archives over live
+paths on a NAS and recreates containers, so a mistake costs data. Test a restore onto something you
+do not mind losing before you rely on it for something you do.
