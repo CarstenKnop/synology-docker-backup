@@ -1,12 +1,48 @@
 ﻿# SSH Docker Backup
 
 [![build](https://github.com/CarstenKnop/synology-docker-backup/actions/workflows/build.yml/badge.svg)](https://github.com/CarstenKnop/synology-docker-backup/actions/workflows/build.yml)
+[![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![.NET 10](https://img.shields.io/badge/.NET-10-512BD4.svg)](https://dotnet.microsoft.com/)
 
-A WPF desktop app (.NET 10, MVVM) that backs up Docker containers over SSH — built for Synology
-Container Manager, but it works against any Docker host you can reach with SSH.
+### Your NAS backup probably isn't backing up your containers.
 
-Nothing is installed on the host. Every operation is an ordinary SSH command, so there is no agent,
-no exposed Docker socket, and no configuration change on the NAS.
+Named volumes live under the Docker root directory, which is **not a shared folder** — so Hyper
+Backup never sees them. Every database in Container Manager can be missing from a backup that looks
+complete, and you find out at the worst possible moment.
+
+This backs up all three parts of a container — its **data**, its **configuration** and its
+**images** — over plain SSH, and puts them back.
+
+![The Containers tab, listing every container with its mount data and size](docs/screenshots/02-containers.png)
+
+## Why this one
+
+**Nothing is installed on the host.** No agent, no exposed Docker socket, no `NOPASSWD` sudoers
+rule, no SSH key to deploy. Every operation is an ordinary SSH command using the password you
+already have, and nothing is left behind on the NAS afterwards.
+
+**It restores — it does not just archive.** Volume-backup tools put bytes back into a volume. This
+recreates the container: its image, its ports and environment, its fixed network address, the run
+state it had at backup time, and its entry in Container Manager's Project list.
+
+**It works with no internet.** Images are saved by default, so a restore does not depend on a
+registry still having the version you were running. `:latest` is a moving pointer, and a database
+directory written by an older major version will simply refuse to start.
+
+**It writes where it is fast.** Pointed at a USB drive on the NAS, tar redirects straight to that
+disk and nothing crosses the network. It also warns you when the destination shares a filesystem
+with the containers, because a backup on the volume that dies is not a backup.
+
+### Verified, not assumed
+
+On 9 September 2026 this backed up 17 containers (2.91 GB), then every container, network and
+Container Manager project was deliberately deleted from the NAS. All 17 came back: 11 running and 6
+stopped, matching their state at backup time, on three networks rebuilt with their original subnets,
+inside their original projects. Public sites served by those containers were back without further
+intervention.
+
+The findings that shaped the design — and the honest comparison against Portainer, Dockge and the
+volume-backup tools — are in [DESIGN.md](DESIGN.md).
 
 ## What it captures, and why
 
@@ -47,6 +83,8 @@ it skipped, so the loss is at least visible.
 Images are deduplicated by content ID rather than by name, because one image can be referenced two
 ways — `postgres` by one container and `postgres:latest` by another are the same image, and keying on
 the text stores it twice.
+
+![The Connection tab: host, port, username and password, with sudo enabled](docs/screenshots/01-connection.png)
 
 ## Where the backup goes
 
@@ -183,6 +221,15 @@ A project whose recorded compose directory is not on the host is reported as a n
 failure, with the reason: either the folder is gone, or the stack was managed by something that keeps
 its compose file inside its own volume — Portainer stores stacks at `/data/compose/<id>`, a path that
 only exists inside the Portainer container — so Container Manager has nothing it can adopt.
+
+## Restoring
+
+![The Restore tab: a loaded backup with its containers, host folders and options](docs/screenshots/03-restore.png)
+
+Pick a backup folder, tick what you want, and it is pushed to whichever host is connected on the
+Connection tab — which does not have to be the machine it came from. The pre-flight reports which
+images are already on the host, which will be loaded from the backup, and whether anything needs
+downloading, before a byte is written.
 
 ## Safety behaviour
 
