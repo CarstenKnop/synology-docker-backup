@@ -87,6 +87,10 @@ measuring the growing file rather than from the transfer itself.
 
 ## Design notes
 
+Fuller rationale — what an audit of one real 17-container host actually found, why backups are hard
+in the first place, how this compares to Portainer, Dockge and the volume-backup tools, and where it
+should go next — is in [DESIGN.md](DESIGN.md).
+
 Three host quirks shaped the implementation:
 
 - **No SFTP.** DSM ships with the SFTP subsystem disabled, so SCP and SFTP both fail. All file
