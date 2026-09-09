@@ -114,7 +114,7 @@ public sealed class BackupService(
     /// Decides whether a source is worth archiving and how. tar cannot chdir into a file, so a
     /// single-file bind mount has to be archived by name from its parent instead.
     /// </summary>
-    private static (SourceIssueKind? Issue, string? Reason, bool IsDirectory) Classify(
+    internal static (SourceIssueKind? Issue, string? Reason, bool IsDirectory) Classify(
         string hostPath, RemotePathKind kind, BackupOptions options)
     {
         if (options.IsExcluded(hostPath))

@@ -134,7 +134,7 @@ public sealed class RestoreService(
     /// Docker would apply. A colon in the registry part ("myreg:5000/app") is a port, not a tag,
     /// which is why only the last path segment is examined.
     /// </summary>
-    private static string NormaliseImageRef(string image)
+    internal static string NormaliseImageRef(string image)
     {
         var reference = image.Trim();
         if (reference.Length == 0) return reference;
@@ -918,7 +918,7 @@ public sealed class RestoreService(
     /// Rewrites a path as one container saw it into the host path behind it, using the bind mounts
     /// recorded in the backup. Longest destination wins, so a nested mount beats its parent.
     /// </summary>
-    private static string? TranslateThroughBindMounts(string containerPath, BackupManifest manifest)
+    internal static string? TranslateThroughBindMounts(string containerPath, BackupManifest manifest)
     {
         var mounts = manifest.Containers
             .SelectMany(c => c.Archives)

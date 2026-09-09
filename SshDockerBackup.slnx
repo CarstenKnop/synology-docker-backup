@@ -1,6 +1,9 @@
-<Solution>
+﻿<Solution>
   <Folder Name="/src/">
     <Project Path="src/SshDockerBackup.App/SshDockerBackup.App.csproj" />
     <Project Path="src/SshDockerBackup.Core/SshDockerBackup.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/SshDockerBackup.Core.Tests/SshDockerBackup.Core.Tests.csproj" />
   </Folder>
 </Solution>

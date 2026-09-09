@@ -172,7 +172,7 @@ public sealed partial class SynologyProjects(ISshSession ssh, ILogger<SynologyPr
     /// synowebapi prints diagnostics such as "[Line 295] Exec WebAPI: ..." before the JSON body,
     /// so the payload has to be carved out rather than parsed from the first character.
     /// </summary>
-    private static bool TryExtractJson(string output, out string json)
+    internal static bool TryExtractJson(string output, out string json)
     {
         json = "";
         if (string.IsNullOrWhiteSpace(output)) return false;

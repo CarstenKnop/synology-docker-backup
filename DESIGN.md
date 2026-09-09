@@ -1,4 +1,4 @@
-# Design notes
+﻿# Design notes
 
 Why this tool is shaped the way it is, what it deliberately does not do, and where it should go.
 
@@ -350,6 +350,12 @@ anyone. Reported as an explained note rather than a failure.
 environment variable in plaintext, which for most stacks means database passwords and API tokens.
 Encrypt it before it goes off-site. Handling this properly — detecting secrets and encrypting them
 rather than archiving them in the clear — is §6, capability 5, and is not built yet.
+
+**Only the pure logic is tested.** The suite covers shell quoting, image-reference comparison,
+source classification, exclusion matching, manifest sizing, bind-mount translation and the
+`synowebapi` parser — chosen because those are the functions that actually shipped bugs. Everything
+that touches SSH, tar or Docker is exercised only by running it against a real host, which is how
+all fourteen findings above were discovered and is not a substitute for tests.
 
 **A private label vocabulary is still private.** Four labels nobody else reads is a standard of one.
 It is worth it only because the tool writes them itself. If it ever needs a person to maintain it by

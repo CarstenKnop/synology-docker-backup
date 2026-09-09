@@ -1,5 +1,7 @@
 ﻿# SSH Docker Backup
 
+[![build](https://github.com/CarstenKnop/synology-docker-backup/actions/workflows/build.yml/badge.svg)](https://github.com/CarstenKnop/synology-docker-backup/actions/workflows/build.yml)
+
 A WPF desktop app (.NET 10, MVVM) that backs up Docker containers over SSH — built for Synology
 Container Manager, but it works against any Docker host you can reach with SSH.
 
@@ -212,8 +214,9 @@ only exists inside the Portainer container — so Container Manager has nothing 
 ## Projects
 
 ```
-src/SshDockerBackup.Core   net10.0          transport, docker CLI, backup/restore, no UI types
-src/SshDockerBackup.App    net10.0-windows  WPF, MVVM, Fluent theme, Serilog
+src/SshDockerBackup.Core          net10.0          transport, docker CLI, backup/restore, no UI types
+src/SshDockerBackup.App           net10.0-windows  WPF, MVVM, Fluent theme, Serilog
+tests/SshDockerBackup.Core.Tests  net10.0          xUnit, no NAS required
 ```
 
 `Core` has no reference to WPF, so the backup engine is testable and reusable on its own.
@@ -231,9 +234,26 @@ held in memory for the session only.
 
 ```
 dotnet build SshDockerBackup.slnx
+dotnet test SshDockerBackup.slnx
 ```
 
 Requires the .NET 10 SDK. Open `SshDockerBackup.slnx` in Visual Studio 2026.
+
+## Tests
+
+The suite covers the pure logic, so it needs no NAS, no network and no Docker, and finishes in
+about a second. What it covers is chosen rather than incidental — these are the functions that
+actually shipped bugs:
+
+| Area | Why it is tested |
+|---|---|
+| Shell quoting | Every remote command passes through it, as root. A container or folder name can contain anything, so a quoting bug is arbitrary code execution rather than a wrong answer. Asserted as a round trip: what a POSIX shell would hand back must equal the original. |
+| Image reference comparison | `postgres` and `postgres:latest` are one image. Treating the text as the identity stored 565 MB twice. A colon in `myreg:5000/app` is a port, not a tag. |
+| `synowebapi` response parsing | The parser used to take the first `{` in the output, which belongs to the diagnostics' own `param={…}`. Every DSM call reported failure while succeeding. |
+| Source classification | What gets archived, skipped as missing, or refused as host plumbing. Restoring `/etc/localtime` would rewrite the host's timezone. |
+| Exclusion matching | Exclusions leave data out of a backup. `/volume1/photos` must not be dropped because `/volume1/photo` was excluded. |
+| Manifest sizing | One file referenced twice is one file. Summing entries over-reported a backup by 120 MB. |
+| Bind-mount translation | Turning a container-internal compose path back into a host path, without a mount at `/` matching everything. |
 
 ## License
 
