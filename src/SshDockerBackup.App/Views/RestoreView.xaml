@@ -1,0 +1,204 @@
+﻿<UserControl x:Class="SshDockerBackup.App.Views.RestoreView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:conv="clr-namespace:SshDockerBackup.App.Converters">
+
+    <UserControl.Resources>
+        <conv:StringToVisibilityConverter x:Key="StringToVis" />
+        <conv:InverseBooleanConverter x:Key="InverseBool" />
+        <conv:BooleanToVisibilityConverter x:Key="BoolToVis" />
+    </UserControl.Resources>
+
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0">
+            <TextBlock Text="Restore" Style="{StaticResource HeadingText}" />
+            <TextBlock Style="{StaticResource SubtleText}"
+                       Text="Pick a backup folder, choose what to put back, and it is pushed to whichever host is connected on the Connection tab. That does not have to be the machine it came from." />
+        </StackPanel>
+
+        <StackPanel Grid.Row="1">
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                <RadioButton GroupName="Source" Content="Backup is on this PC" Margin="0,0,24,0"
+                             IsChecked="{Binding SourceOnHost, Converter={StaticResource InverseBool}}" />
+                <RadioButton GroupName="Source" Content="Backup is on the NAS (USB drive or share)"
+                             IsChecked="{Binding SourceOnHost}" />
+            </StackPanel>
+
+            <Grid Margin="0,0,0,10">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBox Grid.Column="0" Text="{Binding BackupFolder, UpdateSourceTrigger=PropertyChanged}" />
+                <Button Grid.Column="1" Content="Browse..." Margin="8,0,0,0" Command="{Binding BrowseAndLoadCommand}" />
+                <Button Grid.Column="2" Content="Load" Margin="8,0,0,0" Command="{Binding LoadCommand}" />
+            </Grid>
+
+            <!-- Summary shares a row with the buttons: every fixed pixel here is one the
+                 container list below does not get. -->
+            <Grid Margin="0,0,0,10">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0" Orientation="Horizontal"
+                            Visibility="{Binding HasManifest, Converter={StaticResource BoolToVis}}">
+                    <Button Content="All" MinWidth="60" Margin="0,0,6,0" Command="{Binding SelectAllCommand}" />
+                    <Button Content="None" MinWidth="60" Margin="0,0,6,0" Command="{Binding SelectNoneCommand}" />
+                    <Button Content="Open folder" MinWidth="100" Command="{Binding OpenBackupFolderCommand}" />
+                </StackPanel>
+
+                <TextBlock Grid.Column="1" Text="{Binding ManifestSummary}" Opacity="0.75"
+                           VerticalAlignment="Center" HorizontalAlignment="Right"
+                           Margin="12,0,0,0" TextTrimming="CharacterEllipsis" />
+            </Grid>
+        </StackPanel>
+
+        <!-- The container list is the point of this page, so it gets the flexible row and a floor
+             below which the rest of the layout is not allowed to squeeze it. -->
+        <DataGrid Grid.Row="2"
+                  MinHeight="220"
+                  ItemsSource="{Binding Items}"
+                  AutoGenerateColumns="False"
+                  CanUserAddRows="False"
+                  GridLinesVisibility="Horizontal"
+                  HeadersVisibility="Column"
+                  SelectionMode="Single"
+                  RowHeaderWidth="0"
+                  Visibility="{Binding HasManifest, Converter={StaticResource BoolToVis}}">
+            <DataGrid.Columns>
+                <DataGridTemplateColumn Header="" Width="44" IsReadOnly="True">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <CheckBox IsChecked="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged}"
+                                      HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+
+                <DataGridTextColumn Header="Container" Width="220" Binding="{Binding Name}" IsReadOnly="True" />
+                <DataGridTextColumn Header="Image" Width="*" Binding="{Binding Image}" IsReadOnly="True" />
+                <DataGridTextColumn Header="Contents" Width="220" Binding="{Binding ContentSummary}" IsReadOnly="True" />
+                <DataGridTextColumn Header="At backup" Width="100" Binding="{Binding WasRunningText}" IsReadOnly="True" />
+                <DataGridTextColumn Header="Size" Width="100" Binding="{Binding SizeText}" IsReadOnly="True" />
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <!-- Collapsed by default. Expanded it costs ~290px, which is most of the container list;
+             the header carries the count so nothing is hidden from view. -->
+        <Expander Grid.Row="3" Margin="0,12,0,0" IsExpanded="False"
+                  Header="{Binding ExtraPathsHeader}"
+                  Visibility="{Binding HasExtraPaths, Converter={StaticResource BoolToVis}}">
+            <DataGrid ItemsSource="{Binding ExtraPathItems}"
+                      AutoGenerateColumns="False"
+                      CanUserAddRows="False"
+                      HeadersVisibility="Column"
+                      GridLinesVisibility="Horizontal"
+                      RowHeaderWidth="0"
+                      MaxHeight="130"
+                      Margin="0,8,0,0">
+                <DataGrid.Columns>
+                    <DataGridTemplateColumn Header="" Width="44" IsReadOnly="True">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <CheckBox IsChecked="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged}"
+                                          IsEnabled="{Binding CanChoose}"
+                                          HorizontalAlignment="Center" VerticalAlignment="Center"
+                                          ToolTip="A folder that belongs to containers follows their ticks, so unticking a container never writes its folder back. Folders no container claims stay yours to choose." />
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                    <DataGridTextColumn Header="Folder on the host" Width="*" Binding="{Binding HostPath}" IsReadOnly="True" />
+                    <DataGridTextColumn Header="Belongs to" Width="220" Binding="{Binding OwnersText}" IsReadOnly="True" />
+                    <DataGridTextColumn Header="Size" Width="100" Binding="{Binding SizeText}" IsReadOnly="True" />
+                </DataGrid.Columns>
+            </DataGrid>
+        </Expander>
+
+        <Border Grid.Row="4" Style="{StaticResource Card}" Margin="0,12,0,0">
+            <StackPanel>
+                <!-- One wrapping row of options with the detail on hover, rather than a paragraph
+                     under each: the explanations were pushing the container list off the page. -->
+                <WrapPanel Margin="0,0,0,8">
+                    <CheckBox IsChecked="{Binding RestoreVolumeData}" Content="Restore volume and bind-mount data"
+                              Margin="0,0,20,6"
+                              ToolTip="Unpacks the archived volumes and bind mounts back to their original paths on the host." />
+                    <CheckBox IsChecked="{Binding RestoreHostFolders}" Content="Restore host folders"
+                              Margin="0,0,20,6"
+                              ToolTip="Puts the project directories captured in this backup back at their original paths. Each folder follows the containers it belongs to, so only the ones you are restoring get written." />
+                    <CheckBox IsChecked="{Binding RecreateContainers}" Content="Recreate containers from compose"
+                              Margin="0,0,20,6"
+                              ToolTip="Runs the generated compose file for each container. Without this, only data is restored." />
+                    <CheckBox IsChecked="{Binding VerifyChecksums}" Content="Verify checksums first"
+                              Margin="0,0,20,6"
+                              ToolTip="Checks each archive's SHA-256 before writing it, so a damaged archive cannot overwrite good data." />
+                    <CheckBox IsChecked="{Binding LoadImages}" Content="Load archived images"
+                              Margin="0,0,20,6"
+                              ToolTip="Loads images from the backup instead of pulling them from a registry. Only useful if images were exported." />
+                    <CheckBox IsChecked="{Binding PreserveRunningState}" Content="Preserve run state"
+                              Margin="0,0,20,6"
+                              ToolTip="A container that was not running when the backup was taken is created but not started, using compose create rather than up. Untick to start everything, which is usually what you want when seeding a new host." />
+                    <CheckBox IsChecked="{Binding ReplaceExisting}" Content="Replace existing containers"
+                              Margin="0,0,20,6"
+                              ToolTip="Destructive: docker rm -f any container whose name is already taken, then recreate it." />
+                    <CheckBox IsChecked="{Binding RegisterSynologyProjects}" Content="Re-register Container Manager projects"
+                              Margin="0,0,20,6"
+                              ToolTip="Synology keeps its Project list separately from Docker, so a restored project runs correctly but may not appear there. This puts the entry back using DSM's own API. Ignored on non-Synology hosts, and never fails a restore." />
+                </WrapPanel>
+
+                <!-- Shown only when it is armed, which is when the warning actually matters. -->
+                <TextBlock Style="{StaticResource SubtleText}" Margin="0,0,0,8" Foreground="#E8A33C"
+                           Visibility="{Binding ReplaceExisting, Converter={StaticResource BoolToVis}}"
+                           Text="Replace existing containers is ON: any container whose name is already taken will be force-removed with docker rm -f and recreated." />
+
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                    <Button Content="Start restore" MinWidth="140" Padding="16,8"
+                            Command="{Binding StartCommand}"
+                            IsEnabled="{Binding IsRunning, Converter={StaticResource InverseBool}}" />
+                    <Button Content="Cancel" MinWidth="100" Padding="16,8" Margin="8,0,0,0"
+                            Command="{Binding CancelCommand}"
+                            IsEnabled="{Binding IsRunning}" />
+                    <Button Content="Reset to recommended" MinWidth="170" Padding="16,8" Margin="8,0,0,0"
+                            Command="{Binding ResetToRecommendedCommand}"
+                            IsEnabled="{Binding IsRunning, Converter={StaticResource InverseBool}}"
+                            ToolTip="Puts every option back to the combination that produces a complete restore." />
+                </StackPanel>
+
+                <StackPanel Visibility="{Binding IsRunning, Converter={StaticResource BoolToVis}}">
+                    <TextBlock Margin="0,0,0,4">
+                        <Run Text="{Binding ProgressStage, Mode=OneWay}" FontWeight="SemiBold" />
+                        <Run Text=" " />
+                        <Run Text="{Binding ProgressItem, Mode=OneWay}" />
+                    </TextBlock>
+                    <ProgressBar Height="6" Minimum="0" Maximum="100"
+                                 Value="{Binding ProgressPercent}"
+                                 IsIndeterminate="{Binding IsIndeterminate}" />
+                    <TextBlock Text="{Binding ProgressDetail}" Opacity="0.7" Margin="0,4,0,0" />
+                </StackPanel>
+
+                <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" Margin="0,8,0,0"
+                           Visibility="{Binding StatusMessage, Converter={StaticResource StringToVis}}">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding HasError}" Value="True">
+                                    <Setter Property="Foreground" Value="#E84B3C" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>

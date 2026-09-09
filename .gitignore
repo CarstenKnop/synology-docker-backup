@@ -1,0 +1,69 @@
+# Build output. Also the only thing in this tree that carries anything private:
+# NuGet restore writes absolute cache paths, so obj/ embeds the building user's
+# Windows account name in dozens of .cache and .json files.
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Ww][Ii][Nn]32/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+artifacts/
+publish/
+*.binlog
+
+# Visual Studio / Rider / VS Code local state
+.vs/
+.idea/
+.vscode/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.DotSettings.user
+
+# NuGet
+*.nupkg
+*.snupkg
+packages/
+!packages/build/
+project.lock.json
+project.assets.json
+*.nuget.props
+*.nuget.targets
+
+# Test and coverage output
+[Tt]est[Rr]esult*/
+coverage*.json
+coverage*.xml
+coverage*.info
+*.coverage
+*.trx
+
+# Crash and profiling dumps
+*.dmp
+*.mdmp
+
+# OS noise
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store
+
+# --- Runtime data this app produces. None of it belongs in the repository. ---
+# Settings hold the host, port and username of whatever NAS the app is pointed at
+# (never the password, which is held in memory for the session only), and the logs
+# record every remote command that was run.
+settings.json
+*.log
+logs/
+reports/
+
+# A backup set is the most sensitive thing this tool creates: the inspect JSON and
+# generated compose files reproduce every container environment variable in plaintext,
+# which for most stacks means database passwords and API tokens.
+manifest.json
+*.tar.gz

@@ -1,0 +1,212 @@
+﻿<UserControl x:Class="SshDockerBackup.App.Views.BackupView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:conv="clr-namespace:SshDockerBackup.App.Converters">
+
+    <UserControl.Resources>
+        <conv:StringToVisibilityConverter x:Key="StringToVis" />
+        <conv:InverseBooleanConverter x:Key="InverseBool" />
+        <conv:BooleanToVisibilityConverter x:Key="BoolToVis" />
+        <conv:EnumToBooleanConverter x:Key="EnumToBool" />
+    </UserControl.Resources>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20">
+        <StackPanel MaxWidth="820" HorizontalAlignment="Left">
+
+            <TextBlock Text="Backup" Style="{StaticResource HeadingText}" />
+            <TextBlock Style="{StaticResource SubtleText}"
+                       Text="Each run writes a new timestamped folder containing the mount data, the raw docker inspect output for every container, and a generated compose file." />
+
+            <Border Style="{StaticResource Card}">
+                <StackPanel>
+                    <TextBlock Text="Where the backup is written" Style="{StaticResource FieldLabel}" />
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                        <RadioButton GroupName="Destination" Content="This PC" Margin="0,0,24,0"
+                                     IsChecked="{Binding DestinationOnHost, Converter={StaticResource InverseBool}}" />
+                        <RadioButton GroupName="Destination" Content="A folder on the NAS (USB drive or share)"
+                                     IsChecked="{Binding DestinationOnHost}" />
+                    </StackPanel>
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox Grid.Column="0" Text="{Binding Destination, UpdateSourceTrigger=PropertyChanged}" />
+                        <Button Grid.Column="1" Content="Browse..." Margin="8,0,0,0"
+                                Command="{Binding BrowseDestinationCommand}" />
+                    </Grid>
+                    <TextBlock Style="{StaticResource SubtleText}" Margin="0,6,0,0"
+                               Text="{Binding DestinationHint}" />
+                    <TextBlock Style="{StaticResource SubtleText}" Margin="0,0,0,0"
+                               Visibility="{Binding DestinationOnHost, Converter={StaticResource BoolToVis}}"
+                               Text="Writing on the NAS means tar goes straight to that disk, so nothing crosses the network and large volumes finish far quicker. Choose a different physical disk from the one holding your containers: a backup on the same volume dies with it." />
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource Card}">
+                <StackPanel>
+                    <TextBlock Text="Options" FontWeight="SemiBold" Margin="0,0,0,10" />
+
+                    <CheckBox IsChecked="{Binding StopContainers}" Content="Stop each container while its data is archived" />
+                    <TextBlock Style="{StaticResource SubtleText}" Margin="24,4,0,10"
+                               Text="Strongly recommended. A tar of a running database is usually a corrupt database, and you only find out at restore time. Containers are restarted afterwards, including if the run fails or is cancelled." />
+
+                    <CheckBox IsChecked="{Binding ComputeChecksums}" Content="Compute SHA-256 for each archive" />
+                    <TextBlock Style="{StaticResource SubtleText}" Margin="24,4,0,10"
+                               Text="Hashed while streaming, so it costs nothing extra. Restore checks it before writing anything back." />
+
+                    <TextBlock Text="Container images" FontWeight="SemiBold" Margin="0,6,0,6" />
+
+                    <RadioButton GroupName="ImageMode" Content="Every image (recommended)"
+                                 IsChecked="{Binding ImageMode, Converter={StaticResource EnumToBool}, ConverterParameter=All}" />
+                    <TextBlock Style="{StaticResource SubtleText}" Margin="24,4,0,8"
+                               Text="Makes the backup self-contained: it restores with no internet, and pins the exact image that was running. Most images are tagged :latest, which moves — restore a year from now and you get different software, and a database written by an older version will refuse to start against it. Costs disk space." />
+
+                    <RadioButton GroupName="ImageMode" Content="Only images that cannot be downloaded again"
+                                 IsChecked="{Binding ImageMode, Converter={StaticResource EnumToBool}, ConverterParameter=LocalOnly}" />
+                    <TextBlock Style="{StaticResource SubtleText}" Margin="24,4,0,8"
+                               Text="Smaller backups. Keeps only what you built yourself, and re-downloads the rest — which needs internet at restore time and may fetch a newer version than the one you backed up." />
+
+                    <RadioButton GroupName="ImageMode" Content="No images at all"
+                                 IsChecked="{Binding ImageMode, Converter={StaticResource EnumToBool}, ConverterParameter=None}" />
+                    <TextBlock Style="{StaticResource SubtleText}" Margin="24,4,0,0"
+                               Text="Anything built locally is then unrecoverable. The backup README lists what was skipped so you can spot it." />
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource Card}">
+                <StackPanel>
+                    <TextBlock Text="Host folders" FontWeight="SemiBold" Margin="0,0,0,6" />
+                    <TextBlock Style="{StaticResource SubtleText}" Margin="0,0,0,10"
+                               Text="Folders archived regardless of any container. A project directory belongs here: the compose file, Dockerfile, .env and scripts sit beside the mounted subfolder and are mounted into nothing, so a mount-following backup never sees them." />
+
+                    <Grid Margin="0,0,0,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox Grid.Column="0" Text="{Binding NewExtraPath, UpdateSourceTrigger=PropertyChanged}"
+                                 ToolTip="Absolute path on the NAS, e.g. /volume1/docker/myapp" />
+                        <Button Grid.Column="1" Content="Add" MinWidth="70" Margin="8,0,0,0"
+                                Command="{Binding AddExtraPathCommand}" />
+                        <Button Grid.Column="2" Content="Find project folders" MinWidth="150" Margin="8,0,0,0"
+                                Command="{Binding SuggestProjectFoldersCommand}" />
+                    </Grid>
+
+                    <ListBox ItemsSource="{Binding ExtraPaths}" SelectedItem="{Binding SelectedExtraPath}"
+                             MinHeight="70" MaxHeight="160" />
+
+                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                        <Button Content="Remove selected" MinWidth="130"
+                                Command="{Binding RemoveExtraPathCommand}" />
+                        <TextBlock Text="{Binding ExtraPathsStatus}" VerticalAlignment="Center"
+                                   Margin="12,0,0,0" Opacity="0.75" TextWrapping="Wrap" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource Card}">
+                <StackPanel>
+                    <TextBlock Text="Folders to leave out" FontWeight="SemiBold" Margin="0,0,0,6" />
+                    <TextBlock Style="{StaticResource SubtleText}" Margin="0,0,0,10"
+                               Text="Normally empty, and normally it should stay empty &#x2014; anything left out here is not in the backup and cannot be restored from it. Use it for a large library that a container merely reads, such as a photo or media share: that data is not container data, it is usually enormous, and Hyper Backup is the right tool for it. A folder listed here is skipped everywhere, including everything beneath it." />
+
+                    <Grid Margin="0,0,0,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox Grid.Column="0" Text="{Binding NewExcludedPath, UpdateSourceTrigger=PropertyChanged}"
+                                 ToolTip="Absolute path on the NAS, e.g. /volume1/photo" />
+                        <Button Grid.Column="1" Content="Browse..." MinWidth="90" Margin="8,0,0,0"
+                                Command="{Binding BrowseExcludedPathCommand}" />
+                        <Button Grid.Column="2" Content="Exclude" MinWidth="90" Margin="8,0,0,0"
+                                Command="{Binding AddExcludedPathCommand}" />
+                    </Grid>
+
+                    <ListBox ItemsSource="{Binding ExcludedPaths}" SelectedItem="{Binding SelectedExcludedPath}"
+                             MinHeight="70" MaxHeight="160" />
+
+                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                        <Button Content="Remove selected" MinWidth="130"
+                                Command="{Binding RemoveExcludedPathCommand}" />
+                        <TextBlock Text="{Binding ExcludedPathsStatus}" VerticalAlignment="Center"
+                                   Margin="12,0,0,0" Opacity="0.75" TextWrapping="Wrap" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource Card}">
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                        <Button Content="Check sources" MinWidth="130" Padding="16,8" Margin="0,0,8,0"
+                                Command="{Binding CheckSourcesCommand}"
+                                IsEnabled="{Binding IsRunning, Converter={StaticResource InverseBool}}" />
+                        <Button Content="Start backup" MinWidth="140" Padding="16,8"
+                                Command="{Binding StartCommand}"
+                                IsEnabled="{Binding IsRunning, Converter={StaticResource InverseBool}}" />
+                        <Button Content="Cancel" MinWidth="100" Padding="16,8" Margin="8,0,0,0"
+                                Command="{Binding CancelCommand}"
+                                IsEnabled="{Binding IsRunning}" />
+                        <Button Content="Open backup folder" MinWidth="150" Padding="16,8" Margin="8,0,0,0"
+                                Command="{Binding OpenLastBackupCommand}"
+                                Visibility="{Binding LastBackupPath, Converter={StaticResource StringToVis}}" />
+
+                        <ProgressBar Width="90" Height="4" IsIndeterminate="True" VerticalAlignment="Center"
+                                     Margin="12,0,0,0"
+                                     Visibility="{Binding IsChecking, Converter={StaticResource BoolToVis}}" />
+
+                        <TextBlock VerticalAlignment="Center" Margin="16,0,0,0" Opacity="0.75">
+                            <Run Text="{Binding SelectedCount, Mode=OneWay}" />
+                            <Run Text="container(s) ticked" />
+                        </TextBlock>
+                    </StackPanel>
+
+                    <StackPanel Visibility="{Binding IsRunning, Converter={StaticResource BoolToVis}}">
+                        <TextBlock Margin="0,0,0,4">
+                            <Run Text="{Binding ProgressStage, Mode=OneWay}" FontWeight="SemiBold" />
+                            <Run Text=" " />
+                            <Run Text="{Binding ProgressItem, Mode=OneWay}" />
+                        </TextBlock>
+                        <ProgressBar Height="6" Minimum="0" Maximum="100"
+                                     Value="{Binding ProgressPercent}"
+                                     IsIndeterminate="{Binding IsIndeterminate}" />
+                        <TextBlock Text="{Binding ProgressDetail}" Opacity="0.7" Margin="0,4,0,0" />
+                    </StackPanel>
+
+                    <Border Margin="0,8,0,0" Padding="12" CornerRadius="6"
+                            Background="{DynamicResource CardBackgroundFillColorSecondaryBrush}"
+                            Visibility="{Binding PreflightSummary, Converter={StaticResource StringToVis}}">
+                        <TextBlock Text="{Binding PreflightSummary}" TextWrapping="Wrap"
+                                   Style="{StaticResource MonoText}" />
+                    </Border>
+
+                    <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" Margin="0,8,0,0"
+                               Visibility="{Binding StatusMessage, Converter={StaticResource StringToVis}}">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HasError}" Value="True">
+                                        <Setter Property="Foreground" Value="#E84B3C" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource Card}">
+                <StackPanel>
+                    <TextBlock Text="A note on what ends up in the folder" FontWeight="SemiBold" Margin="0,0,0,6" />
+                    <TextBlock Style="{StaticResource SubtleText}" Margin="0"
+                               Text="The inspect JSON and the generated compose files contain every container environment variable in plaintext, which for most stacks means database passwords and API keys. Treat the backup folder as sensitive and encrypt it before it goes off-site." />
+                </StackPanel>
+            </Border>
+
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

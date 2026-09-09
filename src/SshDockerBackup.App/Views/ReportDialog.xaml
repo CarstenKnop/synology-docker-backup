@@ -1,0 +1,90 @@
+<Window x:Class="SshDockerBackup.App.Views.ReportDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:conv="clr-namespace:SshDockerBackup.App.Converters"
+        Title="{Binding Title}"
+        Height="760" Width="880"
+        MinHeight="520" MinWidth="680"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False">
+
+    <Window.Resources>
+        <conv:ReportSeverityToBrushConverter x:Key="SeverityBrush" />
+        <conv:ReportSeverityToGlyphConverter x:Key="SeverityGlyph" />
+        <conv:BooleanToVisibilityConverter x:Key="BoolToVis" />
+        <conv:StringToVisibilityConverter x:Key="StringToVis" />
+
+        <!-- One line of a report: a coloured marker and wrapping text. -->
+        <DataTemplate x:Key="ReportLineTemplate">
+            <Grid Margin="0,3">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="22" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0"
+                           Text="{Binding Severity, Converter={StaticResource SeverityGlyph}}"
+                           Foreground="{Binding Severity, Converter={StaticResource SeverityBrush}}"
+                           FontWeight="Bold" VerticalAlignment="Top" />
+                <TextBlock Grid.Column="1" Text="{Binding Text}" TextWrapping="Wrap" />
+            </Grid>
+        </DataTemplate>
+    </Window.Resources>
+
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Margin="0,0,0,14">
+            <TextBlock Text="{Binding Title}" FontSize="22" FontWeight="SemiBold" TextWrapping="Wrap" />
+            <TextBlock Text="{Binding Subtitle}" Opacity="0.75" TextWrapping="Wrap" Margin="0,2,0,0" />
+        </StackPanel>
+
+        <!-- The overview. Deliberately first and deliberately short. -->
+        <Border Grid.Row="1" Style="{StaticResource Card}">
+            <StackPanel>
+                <TextBlock Text="In short" FontWeight="SemiBold" Margin="0,0,0,8" />
+                <ItemsControl ItemsSource="{Binding Headlines}"
+                              ItemTemplate="{StaticResource ReportLineTemplate}" />
+            </StackPanel>
+        </Border>
+
+        <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" Margin="0,4,0,0">
+            <ItemsControl ItemsSource="{Binding Sections}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Expander Header="{Binding Title}" IsExpanded="True" Margin="0,0,0,8">
+                            <StackPanel Margin="8,8,0,4">
+                                <TextBlock Text="{Binding Intro}" TextWrapping="Wrap" Opacity="0.75"
+                                           Margin="0,0,0,8"
+                                           Visibility="{Binding Intro, Converter={StaticResource StringToVis}}" />
+                                <ItemsControl ItemsSource="{Binding Lines}"
+                                              ItemTemplate="{StaticResource ReportLineTemplate}" />
+                            </StackPanel>
+                        </Expander>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+
+        <StackPanel Grid.Row="3" Margin="0,14,0,0">
+            <TextBlock Text="{Binding SavedMessage}" Opacity="0.75" TextWrapping="Wrap" Margin="0,0,0,8"
+                       Visibility="{Binding SavedMessage, Converter={StaticResource StringToVis}}" />
+
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button Content="Open saved copy" MinWidth="140" Padding="14,6" Margin="0,0,8,0"
+                        Command="{Binding OpenSavedCopyCommand}"
+                        Visibility="{Binding HasPreSavedCopy, Converter={StaticResource BoolToVis}}" />
+                <Button Content="Save as text file" MinWidth="140" Padding="14,6" Margin="0,0,8,0"
+                        Command="{Binding SaveReportCommand}" />
+                <Button Content="{Binding ContinueText}" MinWidth="110" Padding="16,6" Margin="0,0,8,0"
+                        Click="OnContinue" IsDefault="True" />
+                <Button Content="Cancel" MinWidth="100" Padding="16,6" IsCancel="True"
+                        Visibility="{Binding ShowCancel, Converter={StaticResource BoolToVis}}" />
+            </StackPanel>
+        </StackPanel>
+    </Grid>
+</Window>
